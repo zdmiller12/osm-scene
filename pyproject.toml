@@ -1,0 +1,44 @@
+[project]
+name = "osm-scene"
+version = "0.1.0"
+description = "Transforming OpenStreetMap data."
+authors = [
+    {name = "zdmiller12",email = "zdmiller12@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
+
+
+# ruff configuration
+# https://docs.astral.sh/ruff/configuration/
+
+
+[tool.ruff]
+target-version = "py38"
+
+
+[tool.ruff.format]
+docstring-code-format = true
+
+
+[tool.ruff.lint]
+ignore = [
+  "T20",
+]
+select = ["ALL"]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
