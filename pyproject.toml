@@ -1,0 +1,72 @@
+[project]
+name = "osm-scene"
+version = "0.1.0"
+description = "Transforming OpenStreetMap data."
+authors = [
+  {name = "zdmiller12",email = "zdmiller12@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "pydantic-settings (>=2.8.1,<3.0.0)",
+  "geopandas (>=1.0.1,<2.0.0)",
+  "pandas[computation,performance,xml] (>=2.2.3,<3.0.0)",
+  "pandera (>=0.23.0,<0.24.0)",
+  "requests (>=2.32.3,<3.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.group.dev]
+optional = true
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
+pytest-cov = "^6.0.0"
+pytest-xdist = "^3.6.1"
+
+
+[tool.pytest.ini_options]
+addopts = "--cache-clear --cov src --cov-fail-under 100 --cov-report term-missing:skip-covered -n logical -vv"
+log_cli = true
+log_cli_level = "ERROR"
+
+
+# ruff configuration
+# https://docs.astral.sh/ruff/configuration/
+
+
+[tool.ruff]
+target-version = "py38"
+
+
+[tool.ruff.format]
+docstring-code-format = true
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+
+[tool.ruff.lint.extend-per-file-ignores]
+"src/osm_scene/_types.py" = [
+  "ANN401",
+  "PLR2004",
+  "S101",
+]
+"tests/*" = [
+  "ANN001",
+  "ANN201",
+  "D103",
+  "S101",
+]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
