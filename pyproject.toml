@@ -9,6 +9,11 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "pydantic-settings (>=2.8.1,<3.0.0)",
+    "geopandas (>=1.0.1,<2.0.0)",
+    "osmpythontools (>=0.3.5,<0.4.0)",
+    "pandas[computation,performance,xml] (>=2.2.3,<3.0.0)",
+    "pandera (>=0.23.0,<0.24.0)",
 ]
 
 
@@ -17,8 +22,20 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 
+[tool.poetry.group.dev]
+optional = true
+
+
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"
+pytest-cov = "^6.0.0"
+pytest-xdist = "^3.6.1"
+
+
+[tool.pytest.ini_options]
+addopts = "--cache-clear --cov src --cov-fail-under 100 --cov-report term-missing:skip-covered -n logical -vv"
+log_cli = true
+log_cli_level = "ERROR"
 
 
 # ruff configuration
