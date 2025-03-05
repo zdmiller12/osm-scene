@@ -51,11 +51,6 @@ docstring-code-format = true
 
 
 [tool.ruff.lint]
-ignore = [
-  "EM101",
-  # "T20",
-  "TRY003",
-]
 select = ["ALL"]
 
 

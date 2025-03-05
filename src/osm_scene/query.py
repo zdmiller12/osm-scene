@@ -51,7 +51,9 @@ class QueryConfig(BaseModel):
             return self
 
         if self.origin is None:
-            raise ValueError("If poly not specified, origin must be.")
+            error = "If poly not specified, origin must be."
+            raise ValueError(error)
         if self.e2 is None:
-            raise ValueError("If poly not specified, e2 must be.")
+            error = "If poly not specified, e2 must be."
+            raise ValueError(error)
         return self
