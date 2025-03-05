@@ -1,0 +1,68 @@
+name: Continuous Development & Integration
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' && github.ref_name != github.event.repository.default_branch }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  poetry-version: "2.1.1"
+  python-version: "3.12.*"
+
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.poetry-version }}
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+          cache: "poetry"
+
+      - name: Install package
+        run: poetry install --only dev
+
+      - name: Run pre-commit
+        run: poetry run pre-commit run --all-files
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.poetry-version }}
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+          cache: "poetry"
+
+      - name: Install package
+        run: poetry install --with dev
+
+      - name: Run pytest
+        run: poetry run pytest
