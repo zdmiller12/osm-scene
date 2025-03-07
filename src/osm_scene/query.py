@@ -105,14 +105,16 @@ class QueryConfig(BaseModel):
         Use pyproj to apply two forward transformations to the origin. First north, then
         east, using distances defined by current extents.
 
-        Raises
-        ------
-            ReferenceError: If poly is defined.
-
         Returns
         -------
+        BBox
             pyproj [BBox](https://pyproj4.github.io/pyproj/stable/api/aoi.html) for
                 query.
+
+        Raises
+        ------
+        ReferenceError
+            If poly is defined.
 
         """
         if self.poly is not None:

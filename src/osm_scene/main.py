@@ -37,12 +37,15 @@ class MainResponse(BaseModel):
 def run(cfg: MainConfig) -> MainResponse:
     """Run primary process.
 
-    Args:
-        cfg (MainConfig): Execution configuration.
+    Parameters
+    ----------
+    cfg : MainConfig
+        Execution configuration.
 
     Returns
     -------
-        Response with relevant information.
+    MainResponse
+        Execution response.
 
     """
     logger.info(f"Running with config...\n{cfg.model_dump_json(indent=4)}")
