@@ -1,17 +1,28 @@
 #!/usr/bin/env python3.12
 """Main OSM Scene entrypoint."""
 
-from loguru import logger
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import sys
 
-from osm_scene import PathField, query
+from loguru import logger
+from pydantic import BaseModel, PrivateAttr
+from pydantic_settings import (
+    BaseSettings,
+    CliApp,
+    CliSubCommand,
+    SettingsConfigDict,
+)
+
+import osm_scene.query as q
 
 logger.bind(name="osm_scene")
 
 
+class MainResponse(BaseModel):
+    """Response model."""
+
+
 class MainConfig(BaseSettings):
-    """Primary OSM Scene configuration."""
+    """OSM Scene CLI application."""
 
     model_config = SettingsConfigDict(
         cli_prog_name="osm_scene",
@@ -25,41 +36,25 @@ class MainConfig(BaseSettings):
         frozen=True,
     )
 
-    dir_out: PathField = "io"
+    query: CliSubCommand[q.QueryConfig]
 
-    q: query.QueryConfig
+    _response: MainResponse = PrivateAttr(default_factory=MainResponse)
 
+    def cli_cmd(self) -> None:
+        """Run main application."""
+        if len(sys.argv) == 1:
+            CliApp.run(self.__class__, cli_args=["--help"])
+        CliApp.run_subcommand(self)
 
-class MainResponse(BaseModel):
-    """Response model."""
-
-
-def run(cfg: MainConfig) -> MainResponse:
-    """Run primary process.
-
-    Parameters
-    ----------
-    cfg : MainConfig
-        Execution configuration.
-
-    Returns
-    -------
-    MainResponse
-        Execution response.
-
-    """
-    logger.info(f"Running with config...\n{cfg.model_dump_json(indent=4)}")
-    response = MainResponse()
-
-    # do stuff
-
-    logger.info(f"Response {response.model_dump_json(indent=4)}")
-    return response
+    def response(self) -> MainResponse:
+        """Get respone."""
+        return self._response
 
 
 def main() -> MainResponse:
     """Primary entrypoint."""
-    return run(MainConfig(_cli_parse_args=True))
+    command = CliApp.run(MainConfig)
+    return command.response()
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -5,6 +5,12 @@ Module for querying OSM data via
 Similar functionality to
 [OSMPythonTools](https://github.com/mocnik-science/osm-python-tools).
 
+References
+----------
+    https://wiki.openstreetmap.org/wiki/Overpass_API/Language_Guide
+
+    https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
+
 """  # noqa: D205
 
 from __future__ import annotations
@@ -17,22 +23,16 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pyproj.aoi import BBox
 
-from osm_scene import Extent2D, LatLon, SimplePoly  # noqa: TC001
+from osm_scene import Extent2D, LatLon, PathField, SimplePoly  # noqa: TC001
 from osm_scene.constants import GEOD_WGS84, OVERPASS_ENDPOINT
 
 
 class QueryConfig(BaseModel):
-    """Configuration for querying Overpass.
-
-    References
-    ----------
-        https://wiki.openstreetmap.org/wiki/Overpass_API/Language_Guide
-
-        https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
-
-    """
+    """Query public Overpass API for data."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    dir_out: PathField = "io"
 
     e2: Extent2D | None = Field(
         None,
@@ -144,6 +144,10 @@ class QueryConfig(BaseModel):
             way["building"]{self.area_filter};
             out tags geom;
         """
+
+    def cli_cmd(self) -> None:
+        """CLI subcommand entrypoint."""
+        logger.info(f"Querying with config...\n\n{self.model_dump_json(indent=4)}")
 
 
 def query_overpass(query: str, query_config: QueryConfig) -> requests.Response:

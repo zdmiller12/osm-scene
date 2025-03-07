@@ -49,3 +49,9 @@ osm_scene build
 ```sh
 osm_scene --help
 ```
+
+or just...
+
+```sh
+osm_scene
+```
