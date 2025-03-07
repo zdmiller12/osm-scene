@@ -12,11 +12,13 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Self
 
+import requests
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pyproj.aoi import BBox
 
 from osm_scene import Extent2D, LatLon, SimplePoly  # noqa: TC001
-from osm_scene.constants import GEOD_WGS84
+from osm_scene.constants import GEOD_WGS84, OVERPASS_ENDPOINT
 
 
 class QueryConfig(BaseModel):
@@ -137,3 +139,32 @@ class QueryConfig(BaseModel):
 
     def get_building_query(self) -> str:
         """Get Overpass query string for buildings."""
+        return f"""
+            [out:json][timeout:{self.timeout_s}];
+            way["building"]{self.area_filter};
+            out tags geom;
+        """
+
+
+def query_overpass(query: str, query_config: QueryConfig) -> requests.Response:
+    """Query Overpass.
+
+    Parameters
+    ----------
+    query : str
+        Query string.
+    query_config : QueryConfig
+        Query configuration.
+
+    Returns
+    -------
+    requests.Response
+        Overpass API response.
+
+    """
+    logger.info(f"Querying overpass...\n\n{query}")
+    return requests.get(
+        OVERPASS_ENDPOINT,
+        timeout=query_config.timeout_s + 1,
+        params={"data": query},
+    )

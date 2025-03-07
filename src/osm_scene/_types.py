@@ -5,7 +5,8 @@ from typing import Annotated, Any
 
 import numpy as np
 import shapely
-from pydantic import AfterValidator, BeforeValidator, Field, PlainSerializer
+from annotated_types import Ge, Le
+from pydantic import AfterValidator, BeforeValidator, PlainSerializer
 
 from osm_scene.constants import NDIGITS_DECIMAL_DEGREES, NDIGITS_METERS
 
@@ -29,7 +30,8 @@ type Extent3D = Annotated[
 
 type Lat = Annotated[
     float,
-    Field(ge=-90, le=90),
+    Ge(-90),
+    Le(90),
     PlainSerializer(
         lambda lat: round(lat, NDIGITS_DECIMAL_DEGREES),
         return_type=float,
@@ -39,7 +41,8 @@ type Lat = Annotated[
 
 type Lon = Annotated[
     float,
-    Field(ge=-180, le=180),
+    Ge(-180),
+    Le(180),
     PlainSerializer(
         lambda lon: round(lon, NDIGITS_DECIMAL_DEGREES),
         return_type=float,
@@ -49,7 +52,7 @@ type Lon = Annotated[
 
 type Meters = Annotated[
     float,
-    Field(ge=0),
+    Ge(0),
     PlainSerializer(
         lambda m: round(m, NDIGITS_METERS),
         return_type=float,

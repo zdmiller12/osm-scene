@@ -24,7 +24,7 @@ def test_query_config_no_origin():
         query.QueryConfig()
 
 
-def test_query_config_no_s():
+def test_query_config_no_e2():
     with pytest.raises(
         ValidationError,
         match="Value error, If poly not specified, e2 must be.",

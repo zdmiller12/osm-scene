@@ -5,8 +5,9 @@ from loguru import logger
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from osm_scene import PathField
-from osm_scene.query import QueryConfig
+from osm_scene import PathField, query
+
+logger.bind(name="osm_scene")
 
 
 class MainConfig(BaseSettings):
@@ -22,12 +23,11 @@ class MainConfig(BaseSettings):
         env_prefix="OSM_SCENE_",
         extra="ignore",
         frozen=True,
-        nested_model_default_partial_update=True,
     )
 
-    dir_out: PathField = "."
+    dir_out: PathField = "io"
 
-    q: QueryConfig
+    q: query.QueryConfig
 
 
 class MainResponse(BaseModel):
@@ -52,8 +52,8 @@ def run(cfg: MainConfig) -> MainResponse:
     response = MainResponse()
 
     # do stuff
-    logger.info(f"Response {response.model_dump_json(indent=4)}")
 
+    logger.info(f"Response {response.model_dump_json(indent=4)}")
     return response
 
 
