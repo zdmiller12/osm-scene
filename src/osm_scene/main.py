@@ -13,11 +13,16 @@ class MainConfig(BaseSettings):
     """Primary OSM Scene configuration."""
 
     model_config = SettingsConfigDict(
-        cli_parse_args=True,
-        cli_prog_name="osm-scene",
+        cli_prog_name="osm_scene",
         cli_use_class_docs_for_groups=True,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_ignore_empty=True,
+        env_nested_delimiter="__",
         env_prefix="OSM_SCENE_",
+        extra="ignore",
         frozen=True,
+        nested_model_default_partial_update=True,
     )
 
     dir_out: PathField = "."
@@ -51,7 +56,7 @@ def run(cfg: MainConfig) -> MainResponse:
 
 def main() -> MainResponse:
     """Primary entrypoint."""
-    return run(MainConfig(_cli_enforce_required=True))
+    return run(MainConfig(_cli_parse_args=True))
 
 
 if __name__ == "__main__":  # pragma: no cover
