@@ -21,6 +21,7 @@ def test_main_config():
         q={
             "e2": (1, 1.1234),
             "origin": (0, 0.1234567),
+            "timeout_s": 900,
         },
     )
     assert cfg.dir_out == expected_dir_out
@@ -30,6 +31,7 @@ def test_main_config():
             "e2": (1.0, 1.1234),
             "origin": (0.0, 0.1234567),
             "poly": None,
+            "timeout_s": 900,
         },
     }
     assert cfg.model_dump_json() == json.dumps(
@@ -39,6 +41,7 @@ def test_main_config():
                 "e2": [1.0, 1.123],
                 "origin": [0.0, 0.123457],
                 "poly": None,
+                "timeout_s": 900,
             },
         },
         separators=(",", ":"),

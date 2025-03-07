@@ -9,15 +9,26 @@ Similar functionality to
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pyproj.aoi import BBox
 
 from osm_scene import Extent2D, LatLon, SimplePoly  # noqa: TC001
+from osm_scene.constants import GEOD_WGS84
 
 
 class QueryConfig(BaseModel):
-    """Configuration for querying Overpass."""
+    """Configuration for querying Overpass.
+
+    References
+    ----------
+        https://wiki.openstreetmap.org/wiki/Overpass_API/Language_Guide
+
+        https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
+
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
@@ -44,6 +55,11 @@ class QueryConfig(BaseModel):
         ),
     )
 
+    timeout_s: int = Field(
+        180,
+        description="Timeout, in seconds, for Overpass queries.",
+    )
+
     @model_validator(mode="after")
     def validate_sufficient_input(self) -> Self:
         """Validate that either polygon or bbox is defined."""
@@ -57,3 +73,65 @@ class QueryConfig(BaseModel):
             error = "If poly not specified, e2 must be."
             raise ValueError(error)
         return self
+
+    @cached_property
+    def area_filter(self) -> str:
+        """Get string for filtering elements by area.
+
+        References
+        ----------
+            https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL#Bounding_box
+
+            https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL#By_polygon_(poly)
+
+        Returns
+        -------
+            String for filtering elements by area.
+
+        """
+        if self.poly is not None:
+            coords = " ".join(
+                f"{lat} {lon}" for lat, lon in map(reversed, self.poly.exterior.coords)
+            )
+            return f'(poly:"{coords}")'
+
+        bbox = self.bbox
+        return f"({bbox.south:.6f}, {bbox.west:.6f}, {bbox.north:.6f}, {bbox.east:.6f})"
+
+    @cached_property
+    def bbox(self) -> BBox:
+        """Get pyproj BBox for query. Not available when defining poly.
+
+        Use pyproj to apply two forward transformations to the origin. First north, then
+        east, using distances defined by current extents.
+
+        Raises
+        ------
+            ReferenceError: If poly is defined.
+
+        Returns
+        -------
+            pyproj [BBox](https://pyproj4.github.io/pyproj/stable/api/aoi.html) for
+                query.
+
+        """
+        if self.poly is not None:
+            error = "Cannot get bbox from poly"
+            raise ReferenceError(error)
+
+        lons, lats, _ = GEOD_WGS84.fwd(
+            lons=2 * [self.origin[1]],
+            lats=2 * [self.origin[0]],
+            az=[0, 90],
+            dist=self.e2,
+            return_back_azimuth=False,
+        )
+        return BBox(
+            west=self.origin[1],
+            south=self.origin[0],
+            east=lons[1],
+            north=lats[0],
+        )
+
+    def get_building_query(self) -> str:
+        """Get Overpass query string for buildings."""

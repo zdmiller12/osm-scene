@@ -2,5 +2,9 @@
 
 from typing import Final
 
+from pyproj import Geod
+
+GEOD_WGS84: Final[Geod] = Geod(ellps="WGS84")
+
 NDIGITS_DECIMAL_DEGREES: Final[int] = 6
 NDIGITS_METERS: Final[int] = 3
