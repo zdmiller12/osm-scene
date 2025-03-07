@@ -1,15 +1,17 @@
 """Test main OSM Scene entrypoint."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+import shapely
 
 from osm_scene import main
 
 
 @pytest.mark.usefixtures("no_cli_args")
-def test_main():
+def test_main_config():
     """Assumes pytest is run from root of the repo."""
     expected_dir_out = Path(__file__).parent.parent
 
@@ -40,3 +42,23 @@ def test_main():
         },
         separators=(",", ":"),
     )
+
+
+def test_main_no_args(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setattr(sys, "argv", ["main.py"])
+
+        with pytest.raises(SystemExit, match="2"):
+            main.main()
+
+
+def test_main(monkeypatch):
+    polygon = shapely.Polygon([(0, 0), (1, 0), (1, 1)])
+
+    query_config = {"poly": polygon.wkt}
+
+    with monkeypatch.context() as m:
+        m.setattr(sys, "argv", ["main.py", "--q", json.dumps(query_config)])
+
+        response = main.main()
+        assert response == main.MainResponse()
