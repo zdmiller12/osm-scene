@@ -31,7 +31,7 @@ class MainConfig(BaseSettings, WithResponse):
         frozen=True,
     )
 
-    query: CliSubCommand[query.QueryConfig]
+    query: CliSubCommand[query.Query]
 
     def cli_cmd(self) -> None:
         """Run main application."""

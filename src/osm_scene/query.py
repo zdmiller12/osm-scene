@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 DataType = Literal["building", "roadway"]
 
 
-class QueryConfig(WithResponse):
+class Query(WithResponse):
     """Query public Overpass API for data."""
 
     model_config = ConfigDict(
@@ -254,7 +254,7 @@ def query_overpass(query: str) -> requests.Response:
     ----------
     query : str
         Query string.
-    query_config : QueryConfig
+    query_config : Query
         Query configuration.
 
     Returns

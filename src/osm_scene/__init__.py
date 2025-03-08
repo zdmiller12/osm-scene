@@ -35,7 +35,6 @@ __all__ = [
     "Lon",
     "Meters",
     "PathField",
-    "QueryConfig",
     "Response",
     "SimplePoly",
     "WithResponse",

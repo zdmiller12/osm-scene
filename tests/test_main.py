@@ -14,7 +14,7 @@ from osm_scene import Response, main, query
 @pytest.fixture
 def mock_query_subcommand():
     with mock.patch.object(
-        query.QueryConfig,
+        query.Query,
         "cli_cmd",
         return_value=None,
     ) as mock_subcommand:
@@ -41,7 +41,7 @@ def test_main_query_cli(dir_io, mock_query_subcommand, monkeypatch):
     mock_query_subcommand.assert_has_calls(
         [
             mock.call(
-                query.QueryConfig(
+                query.Query(
                     dir_out=dir_io,
                     e2=None,
                     origin=None,
@@ -66,7 +66,7 @@ def test_main_query_env(dir_io, mock_query_subcommand, monkeypatch):
     mock_query_subcommand.assert_has_calls(
         [
             mock.call(
-                query.QueryConfig(
+                query.Query(
                     dir_out=dir_io,
                     e2=None,
                     origin=None,
@@ -95,7 +95,7 @@ def test_main_query_env_file(dir_io, mock_query_subcommand, monkeypatch):
     mock_query_subcommand.assert_has_calls(
         [
             mock.call(
-                query.QueryConfig(
+                query.Query(
                     dir_out=dir_io,
                     e2=None,
                     origin=None,

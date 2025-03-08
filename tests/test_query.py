@@ -13,7 +13,7 @@ def test_query_config_default():
         ValidationError,
         match="Value error, If poly not specified, origin must be.",
     ):
-        query.QueryConfig()
+        query.Query()
 
 
 def test_query_config_no_origin():
@@ -21,7 +21,7 @@ def test_query_config_no_origin():
         ValidationError,
         match="Value error, If poly not specified, origin must be.",
     ):
-        query.QueryConfig()
+        query.Query()
 
 
 def test_query_config_no_e2():
@@ -29,7 +29,7 @@ def test_query_config_no_e2():
         ValidationError,
         match="Value error, If poly not specified, e2 must be.",
     ):
-        query.QueryConfig(origin=(0, 0))
+        query.Query(origin=(0, 0))
 
 
 POLY_TO_TEST = shapely.Polygon([(0, 0), (1, 0), (1, 1)])
@@ -38,7 +38,7 @@ POLY_TO_TEST_WKT = "POLYGON ((0 0, 1 0, 1 1, 0 0))"
 
 @pytest.mark.parametrize("poly_in", [POLY_TO_TEST, POLY_TO_TEST_WKT])
 def test_query_config_poly(poly_in):
-    cfg = query.QueryConfig(poly=poly_in)
+    cfg = query.Query(poly=poly_in)
     assert cfg.poly == POLY_TO_TEST
     assert cfg.origin is None
     assert cfg.e2 is None
@@ -52,7 +52,7 @@ def test_query_config_poly_empty():
         ValidationError,
         match="Value error. Simple Polygon must not be empty.",
     ):
-        query.QueryConfig(poly=shapely.Polygon())
+        query.Query(poly=shapely.Polygon())
 
 
 def test_query_config_poly_non_simple():
@@ -62,7 +62,7 @@ def test_query_config_poly_non_simple():
         ValidationError,
         match="Value error. Simple Polygon must be simple.",
     ):
-        query.QueryConfig(poly=non_simple_polygon)
+        query.Query(poly=non_simple_polygon)
 
 
 def test_query_config_bbox():
@@ -77,7 +77,7 @@ def test_query_config_bbox():
 
     expected_area_filter = "(0.000000, 0.000000, 0.000452, 0.000898)"
 
-    cfg = query.QueryConfig(e2=e2, origin=origin)
+    cfg = query.Query(e2=e2, origin=origin)
     assert cfg.poly is None
     assert cfg.bbox == BBox(
         west=west_deg,
