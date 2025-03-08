@@ -15,24 +15,44 @@ References
 
 from __future__ import annotations
 
+import json
+import multiprocessing as mp
 from functools import cached_property
-from typing import Self
+from typing import TYPE_CHECKING, Literal, Self, get_args
 
 import requests
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from pyproj.aoi import BBox
 
-from osm_scene import Extent2D, LatLon, PathField, SimplePoly  # noqa: TC001
-from osm_scene.constants import GEOD_WGS84, OVERPASS_ENDPOINT
+from osm_scene import (
+    DEFAULT_DIR_IO,
+    DEFAULT_TIMEOUT_S,
+    GEOD_WGS84,
+    OVERPASS_ENDPOINT,
+    Extent2D,
+    LatLon,
+    PathField,
+    SimplePoly,
+    WithResponse,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+DataType = Literal["building", "roadway"]
 
 
-class QueryConfig(BaseModel):
+class QueryConfig(WithResponse):
     """Query public Overpass API for data."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=True,
+        validate_default=True,
+    )
 
-    dir_out: PathField = "io"
+    dir_out: PathField = DEFAULT_DIR_IO
 
     e2: Extent2D | None = Field(
         None,
@@ -58,7 +78,7 @@ class QueryConfig(BaseModel):
     )
 
     timeout_s: int = Field(
-        180,
+        DEFAULT_TIMEOUT_S,
         description="Timeout, in seconds, for Overpass queries.",
     )
 
@@ -145,13 +165,90 @@ class QueryConfig(BaseModel):
             out tags geom;
         """
 
+    def get_roadway_query(self) -> str:
+        """Get Overpass query string for roadways."""
+        return f"""
+            [out:json][timeout:{self.timeout_s}];
+            (
+                // "major"
+                way[highway~"^(motorway|trunk|primary|secondary|tertiary|(motorway|trunk|primary|secondary)_link)$"]{self.area_filter};
+
+                // "minor"
+                way[highway~"^(unclassified|residential|living_street|service|pedestrian|track)$"]{self.area_filter};
+            );
+            out tags geom;
+        """
+
+    def get_output_path(self, data_type: DataType) -> Path:
+        """Get output file path for `data_type`."""
+        return self.dir_out / f"{data_type}.json"
+
+    def get_queries(self) -> dict[Path, str]:
+        """Get all Overpass queries for data."""
+        return {
+            self.get_output_path(data_type): getattr(self, f"get_{data_type}_query")()
+            for data_type in get_args(DataType)
+        }
+
     def cli_cmd(self) -> None:
         """CLI subcommand entrypoint."""
-        logger.info(f"Querying with config...\n\n{self.model_dump_json(indent=4)}")
+        logger.info(f"Querying with config={self.model_dump_json(indent=4)}")
+
+        queries = self.get_queries()
+        with mp.Pool(processes=min(len(queries), mp.cpu_count() - 2)) as pool:
+            starmap_async = pool.starmap_async(
+                get_data,
+                queries.items(),
+                callback=_get_data_callback,
+                error_callback=_get_data_error_callback,
+            )
+            output_paths = [
+                result for result in starmap_async.get() if result is not None
+            ]
+
+        self._response.output["output_paths"] = output_paths
 
 
-def query_overpass(query: str, query_config: QueryConfig) -> requests.Response:
+def _get_data_callback(output_path: Path) -> None:
+    """Log saved paths from multiprocessing pool."""
+    logger.info(f"Saved {output_path=}")
+
+
+def _get_data_error_callback(error: Exception) -> None:
+    """Log exceptions raised from multiprocessing pool failures."""
+    logger.error(error)
+
+
+def get_data(output_path: Path, overpass_query: str) -> Path:
+    """Get data from Overpass.
+
+    `overpass_query` should be specific to a single data type, which will be used to
+    query the public Overpass API and results written to `output_path`.
+
+    Parameters
+    ----------
+    output_path : Path
+        Output file path for Overpass results.
+    overpass_query : str
+        Query string for Overpass API.
+
+    Returns
+    -------
+    Path
+        Output file path with Overpass results.
+
+    """
+    output_path.parent.mkdir(exist_ok=True, parents=True)
+    response = query_overpass(overpass_query)
+    with output_path.open("w") as file:
+        json.dump(response.json(), file, indent=4)
+    return output_path
+
+
+def query_overpass(query: str) -> requests.Response:
     """Query Overpass.
+
+    TODO get timeout from query with default
 
     Parameters
     ----------
@@ -166,9 +263,9 @@ def query_overpass(query: str, query_config: QueryConfig) -> requests.Response:
         Overpass API response.
 
     """
-    logger.info(f"Querying overpass...\n\n{query}")
+    logger.info(f"Querying overpass...\n{query}")
     return requests.get(
         OVERPASS_ENDPOINT,
-        timeout=query_config.timeout_s + 1,
+        timeout=180 + 1,
         params={"data": query},
     )

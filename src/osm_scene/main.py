@@ -4,7 +4,6 @@
 import sys
 
 from loguru import logger
-from pydantic import BaseModel, PrivateAttr
 from pydantic_settings import (
     BaseSettings,
     CliApp,
@@ -12,16 +11,12 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-import osm_scene.query as q
+from osm_scene import Response, WithResponse, query
 
 logger.bind(name="osm_scene")
 
 
-class MainResponse(BaseModel):
-    """Response model."""
-
-
-class MainConfig(BaseSettings):
+class MainConfig(BaseSettings, WithResponse):
     """OSM Scene CLI application."""
 
     model_config = SettingsConfigDict(
@@ -36,22 +31,18 @@ class MainConfig(BaseSettings):
         frozen=True,
     )
 
-    query: CliSubCommand[q.QueryConfig]
-
-    _response: MainResponse = PrivateAttr(default_factory=MainResponse)
+    query: CliSubCommand[query.QueryConfig]
 
     def cli_cmd(self) -> None:
         """Run main application."""
         if len(sys.argv) == 1:
             CliApp.run(self.__class__, cli_args=["--help"])
-        CliApp.run_subcommand(self)
 
-    def response(self) -> MainResponse:
-        """Get respone."""
-        return self._response
+        subcommand = CliApp.run_subcommand(self)
+        self._response = subcommand.response()
 
 
-def main() -> MainResponse:
+def main() -> Response:
     """Primary entrypoint."""
     command = CliApp.run(MainConfig)
     return command.response()
