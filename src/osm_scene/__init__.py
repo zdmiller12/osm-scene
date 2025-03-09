@@ -1,6 +1,7 @@
 """OSM Scene package."""
 
 from osm_scene._types import (
+    ExistingDirectory,
     Extent2D,
     Extent3D,
     Lat,
@@ -28,6 +29,7 @@ __all__ = [
     "NDIGITS_DECIMAL_DEGREES",
     "NDIGITS_METERS",
     "OVERPASS_ENDPOINT",
+    "ExistingDirectory",
     "Extent2D",
     "Extent3D",
     "Lat",

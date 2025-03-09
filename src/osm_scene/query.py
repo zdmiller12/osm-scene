@@ -20,7 +20,7 @@ import multiprocessing as mp
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import Literal, Self, get_args
+from typing import Self, get_args
 
 import requests
 from loguru import logger
@@ -37,14 +37,13 @@ from osm_scene import (
     PathField,
     SimplePoly,
     WithResponse,
+    schemas,
 )
 
 REGEX_OVERPASS_TIMEOUT = re.compile(
     r"(?<=\[timeout:)\d+\.?\d*",
     flags=re.MULTILINE,
 )
-
-DataType = Literal["building", "roadway"]
 
 
 class Query(WithResponse):
@@ -56,7 +55,10 @@ class Query(WithResponse):
         validate_default=True,
     )
 
-    dir_out: PathField = DEFAULT_DIR_IO
+    dir_out: PathField = Field(
+        DEFAULT_DIR_IO,
+        description="Directory for saving Overpass query results as JSON files.",
+    )
 
     e2: Extent2D | None = Field(
         None,
@@ -183,7 +185,7 @@ class Query(WithResponse):
             out tags geom;
         """
 
-    def get_output_path(self, data_type: DataType) -> Path:
+    def get_output_path(self, data_type: schemas.DataType) -> Path:
         """Get output file path for `data_type`."""
         return self.dir_out / f"{data_type}.json"
 
@@ -191,7 +193,7 @@ class Query(WithResponse):
         """Get all Overpass queries for data."""
         return {
             self.get_output_path(data_type): get_query()
-            for data_type in get_args(DataType)
+            for data_type in get_args(schemas.DataType)
             if (get_query := getattr(self, f"get_{data_type}_query", None)) is not None
         }
 

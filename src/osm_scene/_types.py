@@ -73,6 +73,34 @@ type LatLon = Annotated[
 ]
 
 
+type PathField = Annotated[
+    Path,
+    pydantic.AfterValidator(lambda path: path.resolve()),
+    pydantic.PlainSerializer(
+        lambda path: str(path),
+        return_type=str,
+        when_used="json",
+    ),
+]
+
+
+def _is_existing_directory(v: Path) -> Path:
+    """Validate that input path is an existing directory."""
+    if not v.exists():
+        error = "Existing directory must exist."
+        raise ValueError(error)
+    if not v.is_dir():
+        error = "Existing directory must be a directory."
+        raise ValueError(error)
+    return v
+
+
+type ExistingDirectory = Annotated[
+    PathField,
+    pydantic.AfterValidator(_is_existing_directory),
+]
+
+
 def _from_wkt(v: Any) -> shapely.Geometry:
     """Load WKT string, if needed, or just return input."""
     if isinstance(v, str):
@@ -80,7 +108,7 @@ def _from_wkt(v: Any) -> shapely.Geometry:
     return v
 
 
-def _validate_simple_poly(v: Any) -> shapely.Polygon:
+def _validate_simple_poly(v: shapely.Polygon) -> shapely.Polygon:
     """Validate that input is a non-empty, simple Polygon."""
     if v.is_empty:
         error = "Simple Polygon must not be empty."
@@ -97,16 +125,6 @@ type SimplePoly = Annotated[
     pydantic.AfterValidator(_validate_simple_poly),
     pydantic.PlainSerializer(
         lambda poly: poly.wkt,
-        return_type=str,
-        when_used="json",
-    ),
-]
-
-type PathField = Annotated[
-    Path,
-    pydantic.AfterValidator(lambda path: path.resolve()),
-    pydantic.PlainSerializer(
-        lambda path: str(path),
         return_type=str,
         when_used="json",
     ),

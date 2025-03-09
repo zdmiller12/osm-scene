@@ -11,7 +11,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from osm_scene import Response, WithResponse, query
+from osm_scene import Response, WithResponse, build, query
 
 logger.bind(name="osm_scene")
 
@@ -31,6 +31,7 @@ class MainConfig(BaseSettings, WithResponse):
         frozen=True,
     )
 
+    build: CliSubCommand[build.Build]
     query: CliSubCommand[query.Query]
 
     def cli_cmd(self) -> None:
