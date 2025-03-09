@@ -1,5 +1,5 @@
 # pre-commit configuration
-# https://github.com/pre-commit/pre-commit/tree/v3.5.0
+# https://pre-commit.com/
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

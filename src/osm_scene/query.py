@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import re
 from functools import cached_property
-from typing import TYPE_CHECKING, Literal, Self, get_args
+from pathlib import Path
+from typing import Literal, Self, get_args
 
 import requests
 from loguru import logger
@@ -37,8 +39,10 @@ from osm_scene import (
     WithResponse,
 )
 
-if TYPE_CHECKING:
-    from pathlib import Path
+REGEX_OVERPASS_TIMEOUT = re.compile(
+    r"(?<=\[timeout:)\d+\.?\d*",
+    flags=re.MULTILINE,
+)
 
 DataType = Literal["building", "roadway"]
 
@@ -186,8 +190,9 @@ class Query(WithResponse):
     def get_queries(self) -> dict[Path, str]:
         """Get all Overpass queries for data."""
         return {
-            self.get_output_path(data_type): getattr(self, f"get_{data_type}_query")()
+            self.get_output_path(data_type): get_query()
             for data_type in get_args(DataType)
+            if (get_query := getattr(self, f"get_{data_type}_query", None)) is not None
         }
 
     def cli_cmd(self) -> None:
@@ -200,23 +205,20 @@ class Query(WithResponse):
                 get_data,
                 queries.items(),
                 callback=_get_data_callback,
-                error_callback=_get_data_error_callback,
             )
             output_paths = [
-                result for result in starmap_async.get() if result is not None
+                result
+                for result in starmap_async.get(timeout=self.timeout_s + 3)
+                if isinstance(result, Path)
             ]
 
         self._response.output["output_paths"] = output_paths
 
 
-def _get_data_callback(output_path: Path) -> None:
+def _get_data_callback(output_paths: list[Path]) -> None:
     """Log saved paths from multiprocessing pool."""
-    logger.info(f"Saved {output_path=}")
-
-
-def _get_data_error_callback(error: Exception) -> None:
-    """Log exceptions raised from multiprocessing pool failures."""
-    logger.error(error)
+    for output_path in output_paths:
+        logger.info(f"Saved {output_path=}")
 
 
 def get_data(output_path: Path, overpass_query: str) -> Path:
@@ -238,24 +240,27 @@ def get_data(output_path: Path, overpass_query: str) -> Path:
         Output file path with Overpass results.
 
     """
-    output_path.parent.mkdir(exist_ok=True, parents=True)
     response = query_overpass(overpass_query)
-    with output_path.open("w") as file:
-        json.dump(response.json(), file, indent=4)
-    return output_path
+
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        logger.error(e)
+        return None
+    else:
+        output_path.parent.mkdir(exist_ok=True, parents=True)
+        with output_path.open("w") as file:
+            json.dump(response.json(), file, indent=4)
+        return output_path
 
 
 def query_overpass(query: str) -> requests.Response:
     """Query Overpass.
 
-    TODO get timeout from query with default
-
     Parameters
     ----------
     query : str
         Query string.
-    query_config : Query
-        Query configuration.
 
     Returns
     -------
@@ -264,8 +269,14 @@ def query_overpass(query: str) -> requests.Response:
 
     """
     logger.info(f"Querying overpass...\n{query}")
+
+    try:
+        overpass_timeout = int(REGEX_OVERPASS_TIMEOUT.search(query).group(0))
+    except AttributeError:
+        overpass_timeout = DEFAULT_TIMEOUT_S
+
     return requests.get(
         OVERPASS_ENDPOINT,
-        timeout=180 + 1,
+        timeout=overpass_timeout + 1,
         params={"data": query},
     )

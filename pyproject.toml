@@ -37,8 +37,37 @@ pytest-cov = "^6.0.0"
 pytest-xdist = "^3.6.1"
 
 
+[tool.poetry.group.notebook]
+optional = true
+
+
+[tool.poetry.group.notebook.dependencies]
+ipykernel = "^6.29.5"
+
+
+# coverage configuration
+# https://coverage.readthedocs.io/en/latest/config.html
+
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+
+[tool.coverage.run]
+branch = true
+concurrency = [
+  "multiprocessing",
+  "thread",
+]
+parallel = true
+sigterm = true
+source = ["src"]
+
+
 [tool.pytest.ini_options]
-addopts = "--cache-clear --cov src --cov-fail-under 100 --cov-report term-missing:skip-covered -n logical -vv"
+addopts = "--cache-clear --cov src -n auto -vv"
 log_cli = true
 log_cli_level = "ERROR"
 
@@ -68,6 +97,7 @@ select = ["ALL"]
 "tests/*" = [
   "ANN001",
   "ANN201",
+  "D102",
   "D103",
   "S101",
 ]
