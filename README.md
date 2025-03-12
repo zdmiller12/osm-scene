@@ -55,3 +55,18 @@ or just...
 ```sh
 osm_scene
 ```
+
+## Supporting New Tags
+
+> https://wiki.openstreetmap.org/wiki/Taginfo/API
+>
+> https://taginfo.openstreetmap.org/taginfo/apidoc
+
+```py
+import requests
+
+response = requests.get(
+    "https://taginfo.openstreetmap.org/api/4/key/values?key=highway&filter=ways&sortname=count_ways&sortorder=desc",
+)
+response.json()
+```
