@@ -33,4 +33,25 @@ def test_build_data_in(tmp_path):
     (dir_in / "roadway.json").touch()
 
     b = build.Build(dir_in=dir_in)
-    assert set(b.data_in) == {dir_in / "building.json", dir_in / "roadway.json"}
+    assert set(b.json_paths) == {dir_in / "building.json", dir_in / "roadway.json"}
+
+
+def test_build_no_data_files(tmp_path):
+    dir_in = tmp_path / "dir_in"
+    dir_in.mkdir()
+
+    b = build.Build(dir_in=dir_in)
+    result = b.cli_cmd()
+    assert result is None
+    assert b.gdfs == {}
+    assert b.response().message == f"No data files found in {dir_in}"
+
+
+def test_build(dir_testdata):
+    dir_in = dir_testdata
+
+    b = build.Build(dir_in=dir_in)
+    b.cli_cmd()
+
+    assert len(b.gdfs["building"]) > 0
+    assert len(b.gdfs["roadway"]) > 0

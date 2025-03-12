@@ -19,3 +19,8 @@ def dir_io():
 @pytest.fixture(scope="session")
 def dir_testdata():
     return Path(__file__).parent / "testdata"
+
+
+@pytest.fixture(scope="session")
+def building_json(dir_testdata):
+    return dir_testdata / "building.json"

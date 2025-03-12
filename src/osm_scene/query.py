@@ -199,7 +199,7 @@ class Query(WithResponse):
 
     def cli_cmd(self) -> None:
         """CLI subcommand entrypoint."""
-        logger.info(f"Querying with config={self.model_dump_json(indent=4)}")
+        logger.info(f"Running query with config={self.model_dump_json(indent=4)}")
 
         queries = self.get_queries()
         with mp.Pool(processes=min(len(queries), mp.cpu_count() - 2)) as pool:
@@ -223,7 +223,7 @@ def _get_data_callback(output_paths: list[Path]) -> None:
         logger.info(f"Saved {output_path=}")
 
 
-def get_data(output_path: Path, overpass_query: str) -> Path:
+def get_data(output_path: Path, overpass_query: str) -> Path | None:
     """Get data from Overpass.
 
     `overpass_query` should be specific to a single data type, which will be used to
@@ -239,7 +239,7 @@ def get_data(output_path: Path, overpass_query: str) -> Path:
     Returns
     -------
     Path
-        Output file path with Overpass results.
+        Output file path with Overpass results, or None if unable to get data.
 
     """
     response = query_overpass(overpass_query)
@@ -270,7 +270,7 @@ def query_overpass(query: str) -> requests.Response:
         Overpass API response.
 
     """
-    logger.info(f"Querying overpass...\n{query}")
+    logger.info(f"Querying {OVERPASS_ENDPOINT=} with\n{query}")
 
     try:
         overpass_timeout = int(REGEX_OVERPASS_TIMEOUT.search(query).group(0))

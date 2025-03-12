@@ -1,9 +1,12 @@
 """Module for building artifacts from Overpass query results."""
 
+import multiprocessing as mp
 from pathlib import Path
 from typing import get_args
 
-from pydantic import ConfigDict, Field, computed_field
+import geopandas as gpd
+from loguru import logger
+from pydantic import ConfigDict, Field, PrivateAttr, computed_field
 
 from osm_scene import (
     DEFAULT_DIR_IO,
@@ -26,9 +29,11 @@ class Build(WithResponse):
         description="Directory to read Overpass query results.",
     )
 
+    _gdfs: dict[schemas.DataType, gpd.GeoDataFrame] = PrivateAttr(default_factory=dict)
+
     @computed_field
     @property
-    def data_in(self) -> list[Path]:
+    def json_paths(self) -> list[Path]:
         """Input data files with Overpass query results."""
         return [
             path
@@ -36,5 +41,27 @@ class Build(WithResponse):
             if path.stem in get_args(schemas.DataType)
         ]
 
+    @property
+    def gdfs(self) -> dict[schemas.DataType, gpd.GeoDataFrame]:
+        """GeoDataFrames of different data types."""
+        return self._gdfs
+
     def cli_cmd(self) -> None:
         """CLI subcommand entrypoint."""
+        logger.info(f"Running query with config={self.model_dump_json(indent=4)}")
+
+        if len(self.json_paths) == 0:
+            warning = f"No data files found in {self.dir_in}"
+            logger.warning(warning)
+            self._response.message = warning
+            return
+
+        with mp.Pool(processes=min(len(self.json_paths), mp.cpu_count() - 2)) as pool:
+            map_async = pool.map_async(schemas.read_json, self.json_paths)
+            self._gdfs.update(
+                {
+                    data_type: data_gdf
+                    for data_type, data_gdf in map_async.get()
+                    if data_type is not None and data_gdf is not None
+                },
+            )
