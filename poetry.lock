@@ -2309,6 +2309,31 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "usd-core"
+version = "25.2.post1"
+description = "Pixar's Universal Scene Description"
+optional = false
+python-versions = "<3.13,>=3.6"
+groups = ["main"]
+files = [
+    {file = "usd_core-25.2.post1-cp310-none-macosx_10_9_universal2.whl", hash = "sha256:6bbe60c6a864d32ed0fc1d24e51b252053dc00457555fec7a5f3bc9ef05e9698"},
+    {file = "usd_core-25.2.post1-cp310-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:96cd87a7450566b90af1210a61871aec70ef4f3c80e82ca5152a47ced44c13a2"},
+    {file = "usd_core-25.2.post1-cp310-none-win_amd64.whl", hash = "sha256:9483b4f6b0e6272cc8cb7e395b03ddb75958ae70c69208fd71db4d74c81d9a94"},
+    {file = "usd_core-25.2.post1-cp311-none-macosx_10_9_universal2.whl", hash = "sha256:b84c67930f5963d619897b13132f9ba67274b168a7b29974481543098c8ea9ad"},
+    {file = "usd_core-25.2.post1-cp311-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6e1e94d6a0ac8a3c80967b277cdbcf4bbaa876b29ad681b4eca46a2ddf08f18a"},
+    {file = "usd_core-25.2.post1-cp311-none-win_amd64.whl", hash = "sha256:f53d40a5f355a297724d33789da09aa2c867429c9356f413d1d1514c972a18a7"},
+    {file = "usd_core-25.2.post1-cp312-none-macosx_10_9_universal2.whl", hash = "sha256:1db74308772645bc5d46e77fe62280e9507210903aaaa7729102c2d1bced7ce8"},
+    {file = "usd_core-25.2.post1-cp312-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:57e223cd8df22fb1960555fff4fb623fbc7f488367a82241db1f82459b8ece84"},
+    {file = "usd_core-25.2.post1-cp312-none-win_amd64.whl", hash = "sha256:d16b735bb758951c173d8622cada3d839d2ebe5400f8ae062548921d7a1cd597"},
+    {file = "usd_core-25.2.post1-cp38-none-macosx_10_9_universal2.whl", hash = "sha256:457ed963c4b7854ee1260c99ffbd1853e4fff6c4f2da8cbff17e3f442c2d0d00"},
+    {file = "usd_core-25.2.post1-cp38-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d4a0fe5da18ea238361917771f3773b97ffcab7c05e2fa88256aa82eea820b31"},
+    {file = "usd_core-25.2.post1-cp38-none-win_amd64.whl", hash = "sha256:17cd42767fa195be25497c235c6161776a14185659dbf96430dde870a7851f25"},
+    {file = "usd_core-25.2.post1-cp39-none-macosx_10_9_universal2.whl", hash = "sha256:2c61f9fd7bc414126e508fd29c69b2e041baf0a587df0c6536845c42b751c7a5"},
+    {file = "usd_core-25.2.post1-cp39-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e583904395afbc90e82509a544e46d36596d4d3ad4166cc56c27388cdf3b17b9"},
+    {file = "usd_core-25.2.post1-cp39-none-win_amd64.whl", hash = "sha256:3e8d66bf827c5cacbfeeb10ed1bc15d1bb2472bb3ee96059e50ded8ad347ab19"},
+]
+
+[[package]]
 name = "virtualenv"
 version = "20.29.2"
 description = "Virtual Python Environment builder"
@@ -2386,4 +2411,4 @@ viz = ["cartopy", "matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "69c7f01b9e5210752ab76437d3a6a674e4220877348266c6f73590b3a93081c3"
+content-hash = "55150406d318d2f8ec8a5d6eda673759b57e6af029e6ea82f138128efbc61a2a"
