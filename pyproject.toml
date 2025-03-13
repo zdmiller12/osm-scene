@@ -104,7 +104,7 @@ select = ["ALL"]
   "PLR2004",
   "S101",
 ]
-"tests/*" = [
+"*test*.py" = [
   "ANN001",
   "ANN201",
   "D102",

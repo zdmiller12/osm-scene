@@ -1,6 +1,6 @@
 """Pytest configuration.
 
-https://docs.pytest.org/en/6.2.x/customize.html
+https://docs.pytest.org/en/stable/reference/customize.html
 
 """
 

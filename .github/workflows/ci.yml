@@ -65,4 +65,33 @@ jobs:
         run: poetry install --with dev
 
       - name: Run pytest
-        run: poetry run pytest
+        run: CI=true poetry run pytest
+
+  pytest-notebooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.poetry-version }}
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+          cache: "poetry"
+
+      - name: Install package
+        run: poetry install --with dev,notebook
+
+      - name: Run pytest
+        working-directory: notebooks
+        run: |
+          CI=true pytest \
+            --cov . \
+            --cov-fail-under 100 \
+            --cov-report term-missing:skip-covered
