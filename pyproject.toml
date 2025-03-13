@@ -44,6 +44,7 @@ optional = true
 
 [tool.poetry.group.notebook.dependencies]
 ipykernel = "^6.29.5"
+testbook = "^0.4.2"
 
 
 # coverage configuration
@@ -68,10 +69,17 @@ sigterm = true
 source = ["src"]
 
 
+# pytest configuration
+# https://docs.pytest.org/en/stable/reference/customize.html
+
+
 [tool.pytest.ini_options]
 addopts = "--cache-clear --cov src -n auto -vv"
 log_cli = true
 log_cli_level = "ERROR"
+testpaths = [
+  "tests",
+]
 
 
 # ruff configuration
