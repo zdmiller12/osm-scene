@@ -12,6 +12,23 @@ Transforming [OpenStreetMap](https://www.openstreetmap.org/) data.
 ./scripts/josm.sh
 ```
 
+## Installation
+
+> requires python3.12
+> 
+> poetry 2.1.1 was used for development
+
+```sh
+pip install poetry==2.1.1
+poetry install
+```
+
+and to contribute or to use the [python notebooks](./notebooks/README.md), install with the `dev` and/or `notebook` dependency groups, respectively.
+
+```sh
+poetry install --with dev,notebook
+```
+
 ## Main Executable
 
 The easiest strategy for using the app is by editing [.env](./.env) with configuration parameters.
@@ -25,12 +42,6 @@ OSM_SCENE_Q={"e2": [100, 100], "origin": [52.518403, 13.358893]}
 ```
 
 After replacing [env](./.env) file contents, confirm that the package is installed with
-
-```sh
-poetry install
-```
-
-> python ~3.12
 
 ### Query
 
