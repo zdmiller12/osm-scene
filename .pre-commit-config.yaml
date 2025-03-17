@@ -26,6 +26,7 @@ repos:
         args: [ --pytest-test-first ]
       - id: pretty-format-json
         args: [ --autofix ]
+        exclude: \.ipynb$
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
