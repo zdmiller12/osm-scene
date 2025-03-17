@@ -164,7 +164,12 @@ class Query(WithResponse):
         )
 
     def get_building_query(self) -> str:
-        """Get Overpass query string for buildings."""
+        """Get Overpass query string for buildings.
+
+        TODO:
+            Get building relations.
+
+        """
         return f"""
             [out:json][timeout:{self.timeout_s}];
             way["building"]{self.area_filter};
