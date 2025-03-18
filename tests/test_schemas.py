@@ -1,6 +1,7 @@
 """Test schemas module."""
 
 import copy
+import json
 import re
 
 import geopandas as gpd
@@ -120,7 +121,7 @@ def test_feature_set(tmp_path):
 
     buildings = schemas.FeatureSet.from_json_path(path_building).root
     assert buildings.geom_type_2d() == "Polygon"
-    assert buildings.geom_type_3d() == "Polygon Z"
+    assert buildings.geom_type_3d() == "Polygon"
     assert buildings.model_2d() == schemas.Building2D
     assert buildings.model_3d() == schemas.Building3D
     assert buildings.schema_2d() == schemas.Building2D.to_schema()
@@ -130,10 +131,62 @@ def test_feature_set(tmp_path):
 
     roadways = schemas.FeatureSet.from_json_path(path_roadway).root
     assert roadways.geom_type_2d() == "LineString"
-    assert roadways.geom_type_3d() == "LineString Z"
+    assert roadways.geom_type_3d() == "LineString"
     assert roadways.model_2d() == schemas.Roadway2D
     assert roadways.model_3d() == schemas.Roadway3D
     assert roadways.schema_2d() == schemas.Roadway2D.to_schema()
     assert roadways.schema_3d() == schemas.Roadway3D.to_schema()
     assert roadways.schema_2d_lazy().drop_invalid_rows
     assert roadways.schema_3d_lazy().drop_invalid_rows
+
+
+def test_feature_set_validation_buildings(tmp_path):
+    building_json = {
+        "elements": [
+            {
+                "id": 1,
+                "height": 5,
+                "geometry": [
+                    {"lat": 0, "lon": 1},
+                    {"lat": 1, "lon": 2},
+                    {"lat": 2, "lon": 3},
+                    {"lat": 3, "lon": 4},
+                ],
+            },
+        ],
+    }
+
+    dir_in = tmp_path / "io"
+    dir_in.mkdir()
+    building_path = dir_in / "building.json"
+    building_path.write_text(json.dumps(building_json))
+
+    buildings = schemas.Building(json_path=building_path)
+    assert "height" in buildings.gdf_2d.columns
+    assert "height" not in buildings.gdf_3d.columns
+
+
+def test_feature_set_validation_roadways(tmp_path):
+    roadway_json = {
+        "elements": [
+            {
+                "id": 1,
+                "highway": "primary",
+                "geometry": [
+                    {"lat": 0, "lon": 1},
+                    {"lat": 1, "lon": 2},
+                    {"lat": 2, "lon": 3},
+                    {"lat": 3, "lon": 4},
+                ],
+            },
+        ],
+    }
+
+    dir_in = tmp_path / "io"
+    dir_in.mkdir()
+    roadway_path = dir_in / "roadway.json"
+    roadway_path.write_text(json.dumps(roadway_json))
+
+    roadways = schemas.Roadway(json_path=roadway_path)
+    assert "lanes" in roadways.gdf_2d.columns
+    assert "lanes" not in roadways.gdf_3d.columns

@@ -83,7 +83,7 @@ class Building2D(pa.DataFrameModel):
 
     # TAGS
 
-    height: float = pa.Field(default=np.nan, ignore_na=True)
+    height: float = pa.Field(gt=0, nullable=True)
 
     class Config:
         """Pandera BaseConfig."""
@@ -98,7 +98,7 @@ class Building3D(pa.DataFrameModel):
 
     id: int = pa.Field(default=0, gt=0)
     geometry: Geometry = pa.Field(
-        check_geometry={"geom_type": "Polygon Z", "crs": 4326},
+        check_geometry={"geom_type": "Polygon", "crs": 4326},
         default=shapely.Polygon(),
     )
 
@@ -122,8 +122,8 @@ class Roadway2D(pa.DataFrameModel):
     # TAGS
 
     highway: str = pa.Field(default="", str_length={"min_value": 1})
-    lanes: int = pa.Field(default=0, gt=0)
-    width: float = pa.Field(default=np.nan)
+    lanes: int = pa.Field(default=2, gt=0)
+    width: float = pa.Field(nullable=True)
 
     class Config:
         """Pandera BaseConfig."""
@@ -138,7 +138,7 @@ class Roadway3D(pa.DataFrameModel):
 
     id: int = pa.Field(default=0, gt=0)
     geometry: Geometry = pa.Field(
-        check_geometry={"geom_type": "LineString Z", "crs": 4326},
+        check_geometry={"geom_type": "LineString", "crs": 4326},
         default=shapely.LineString(),
     )
 
@@ -310,7 +310,7 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
         except json.JSONDecodeError as e:
             logger.error(e)
             data["gdf_2d"] = gpd.GeoDataFrame(columns=cls.columns_2d())
-            data["gdf_3d"] = gpd.GeoDataFrame(columns=cls.columns_2d())
+            data["gdf_3d"] = gpd.GeoDataFrame(columns=cls.columns_3d())
         else:
             data["gdf_2d"] = cls.schema_2d_lazy().validate(
                 make_geometry(
@@ -324,6 +324,7 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
 
     @classmethod
     @abc.abstractmethod
+    @pa.check_types
     def to_3d(cls, gdf: GeoDataFrame[Model2D]) -> GeoDataFrame[Model3D]:
         """Convert two-dimensional data to three-dimensional."""
 
@@ -334,11 +335,10 @@ class Building(FeatureSetBase[Building2D, Building3D]):
 
     data_type: Literal["building"] = "building"
 
-    # @pa.check_io(gdf=Building2D.to_schema(), out=Building3D.to_schema())
     @classmethod
-    def to_3d(cls, _: GeoDataFrame[Building2D]) -> GeoDataFrame[Building3D]:
+    def to_3d(cls, gdf: GeoDataFrame[Building2D]) -> GeoDataFrame[Building3D]:
         """Convert 2D buildings to 3D."""
-        return gpd.GeoDataFrame(columns=cls.columns_3d())
+        return gdf
 
 
 @final
@@ -347,11 +347,10 @@ class Roadway(FeatureSetBase[Roadway2D, Roadway3D]):
 
     data_type: Literal["roadway"] = "roadway"
 
-    # @pa.check_io(gdf=Roadway2D.to_schema(), out=Roadway3D.to_schema())
     @classmethod
-    def to_3d(cls, _: GeoDataFrame[Roadway2D]) -> GeoDataFrame[Roadway3D]:
+    def to_3d(cls, gdf: GeoDataFrame[Roadway2D]) -> GeoDataFrame[Roadway3D]:
         """Convert 2D roadways to 3D."""
-        return gpd.GeoDataFrame(columns=cls.columns_3d())
+        return gdf
 
 
 FeaturesType = Annotated[
