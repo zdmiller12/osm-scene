@@ -1,7 +1,11 @@
 """Test schemas module."""
 
+import copy
+import re
+
 import geopandas as gpd
 import pandas as pd
+import pandera as pa
 import pytest
 import shapely
 from geopandas.testing import assert_geodataframe_equal
@@ -24,7 +28,23 @@ def valid_building():
 
 
 def test_check_geometry_crs_mismatch(valid_building):
-    gdf_validated = schemas.Building2D.validate(valid_building.to_crs(3857), lazy=True)
+    invalid_building = valid_building.to_crs(3857)
+
+    building_schema = copy.deepcopy(schemas.Building2D.to_schema())
+
+    # strict
+    with pytest.raises(
+        pa.errors.SchemaError,
+        match=re.escape(
+            "Column 'geometry' failed element-wise validator number 0: "
+            "check_geometry(geom_type=Polygon, crs=4326)",
+        ),
+    ):
+        building_schema.validate(invalid_building)
+
+    # lazy
+    building_schema.drop_invalid_rows = True
+    gdf_validated = building_schema.validate(invalid_building, lazy=True)
     assert gdf_validated.empty
 
 
@@ -88,9 +108,32 @@ def test_make_geometry():
     )
 
 
-def test_read_json_exception(tmp_path):
-    json_path = tmp_path / "not-really-a.json"
-    json_path.write_text("Howdy, doody.")
+def test_feature_set(tmp_path):
+    dir_in = tmp_path / "io"
+    dir_in.mkdir()
 
-    result = schemas.read_json(json_path)
-    assert result == (None, None)
+    path_building = dir_in / "building.json"
+    path_roadway = dir_in / "roadway.json"
+
+    path_building.touch()
+    path_roadway.touch()
+
+    buildings = schemas.FeatureSet.from_json_path(path_building).root
+    assert buildings.geom_type_2d() == "Polygon"
+    assert buildings.geom_type_3d() == "Polygon Z"
+    assert buildings.model_2d() == schemas.Building2D
+    assert buildings.model_3d() == schemas.Building3D
+    assert buildings.schema_2d() == schemas.Building2D.to_schema()
+    assert buildings.schema_3d() == schemas.Building3D.to_schema()
+    assert buildings.schema_2d_lazy().drop_invalid_rows
+    assert buildings.schema_3d_lazy().drop_invalid_rows
+
+    roadways = schemas.FeatureSet.from_json_path(path_roadway).root
+    assert roadways.geom_type_2d() == "LineString"
+    assert roadways.geom_type_3d() == "LineString Z"
+    assert roadways.model_2d() == schemas.Roadway2D
+    assert roadways.model_3d() == schemas.Roadway3D
+    assert roadways.schema_2d() == schemas.Roadway2D.to_schema()
+    assert roadways.schema_3d() == schemas.Roadway3D.to_schema()
+    assert roadways.schema_2d_lazy().drop_invalid_rows
+    assert roadways.schema_3d_lazy().drop_invalid_rows

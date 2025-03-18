@@ -43,7 +43,7 @@ def test_build_no_data_files(tmp_path):
     b = build.Build(dir_in=dir_in)
     result = b.cli_cmd()
     assert result is None
-    assert b.gdfs == {}
+    assert b.features == []
     assert b.response().message == f"No data files found in {dir_in}"
 
 
@@ -53,5 +53,9 @@ def test_build(dir_testdata):
     b = build.Build(dir_in=dir_in)
     b.cli_cmd()
 
-    assert len(b.gdfs["building"]) > 0
-    assert len(b.gdfs["roadway"]) > 0
+    assert len(b.features) > 0
+    for features in b.features:
+        assert len(features.gdf_2d) > 0
+
+    assert b.features[0]
+    assert iter(b.features)

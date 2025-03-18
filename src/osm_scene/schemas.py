@@ -12,9 +12,11 @@ todo
 
 """
 
+import abc
+import copy
 import json
 from pathlib import Path
-from typing import Final, Literal
+from typing import Annotated, Any, Generic, Literal, Self, TypeVar, final
 
 import geopandas as gpd
 import numpy as np
@@ -22,10 +24,11 @@ import pandas as pd
 import pandera as pa
 import shapely
 from loguru import logger
-from pandera.typing.geopandas import Geometry, GeoSeries
+from pandera.typing.geopandas import GeoDataFrame, Geometry, GeoSeries
+from pydantic import BaseModel, Field, RootModel, model_validator
 from pyproj import CRS
 
-DataType = Literal["building", "roadway"]
+import osm_scene._types as t
 
 
 @pa.extensions.register_check_method(statistics=["geom_type", "crs"])
@@ -33,7 +36,7 @@ def check_geometry(
     geometry: GeoSeries,
     *,
     geom_type: str,
-    crs: CRS = 4326,
+    crs: CRS,
 ) -> pa.typing.Series[bool]:
     """Check that geometry series has expected CRS and is of the expected geometry type.
 
@@ -44,7 +47,7 @@ def check_geometry(
     geom_type : str
         Expected geometry type, as returned by geopandas `geom_type`.
     crs : CRS, optional
-        Expected geometry CRS, by default 4326.
+        Expected geometry CRS.
 
     Returns
     -------
@@ -54,40 +57,72 @@ def check_geometry(
             geometry type.
 
     """
+    if geometry.empty:
+        return True
     if geometry.crs != crs:
         return pd.Series(np.zeros(len(geometry)), dtype=bool)
     return geometry.geom_type.eq(geom_type)
 
 
+class JsonModel(pa.DataFrameModel):
+    """Dataframe model for Overpass results as JSON."""
+
+    id: int
+    geometry: pa.Object
+    tags: pa.Object
+
+
 class Building2D(pa.DataFrameModel):
     """Dataframe model for two-dimensional buildings."""
 
-    id: int = pa.Field(gt=0)
-    geometry: Geometry = pa.Field(check_geometry={"geom_type": "Polygon"})
+    id: int = pa.Field(default=0, gt=0)
+    geometry: Geometry = pa.Field(
+        check_geometry={"geom_type": "Polygon", "crs": 4326},
+        default=shapely.Polygon(),
+    )
 
     # TAGS
 
-    height: float
+    height: float = pa.Field(default=np.nan, ignore_na=True)
 
     class Config:
         """Pandera BaseConfig."""
 
         add_missing_columns = True
         coerce = True
-        drop_invalid_rows = True
+        strict = "filter"
+
+
+class Building3D(pa.DataFrameModel):
+    """Dataframe model for three-dimensional buildings."""
+
+    id: int = pa.Field(default=0, gt=0)
+    geometry: Geometry = pa.Field(
+        check_geometry={"geom_type": "Polygon Z", "crs": 4326},
+        default=shapely.Polygon(),
+    )
+
+    class Config:
+        """Pandera BaseConfig."""
+
+        add_missing_columns = True
+        coerce = True
         strict = "filter"
 
 
 class Roadway2D(pa.DataFrameModel):
     """Dataframe model for two-dimensional roadways."""
 
-    id: int = pa.Field(gt=0)
-    geometry: Geometry = pa.Field(check_geometry={"geom_type": "LineString"})
+    id: int = pa.Field(default=0, gt=0)
+    geometry: Geometry = pa.Field(
+        check_geometry={"geom_type": "LineString", "crs": 4326},
+        default=shapely.LineString(),
+    )
 
     # TAGS
 
-    highway: str  # enumeration from taginfo
-    lanes: str
+    highway: str = pa.Field(default="", str_length={"min_value": 1})
+    lanes: int = pa.Field(default=0, gt=0)
     width: float = pa.Field(default=np.nan)
 
     class Config:
@@ -95,7 +130,23 @@ class Roadway2D(pa.DataFrameModel):
 
         add_missing_columns = True
         coerce = True
-        drop_invalid_rows = True
+        strict = "filter"
+
+
+class Roadway3D(pa.DataFrameModel):
+    """Dataframe model for three-dimensional roadways."""
+
+    id: int = pa.Field(default=0, gt=0)
+    geometry: Geometry = pa.Field(
+        check_geometry={"geom_type": "LineString Z", "crs": 4326},
+        default=shapely.LineString(),
+    )
+
+    class Config:
+        """Pandera BaseConfig."""
+
+        add_missing_columns = True
+        coerce = True
         strict = "filter"
 
 
@@ -123,6 +174,26 @@ def explode_tags(df: pd.DataFrame) -> pd.DataFrame:
         right_index=True,
         suffixes=(None, "_tag"),
     )
+
+
+def get_geom_type(model: pa.DataFrameModel) -> str:
+    """Get geometry type from pandera DataFrameModel.
+
+    The model *must* have a 'geometry' column, for which there is a 'check_geometry'
+    check enforced.
+
+    Parameters
+    ----------
+    model : pa.DataFrameModel
+        pandera DataFrameModel.
+
+    Returns
+    -------
+    str
+        shapely geometry type.
+
+    """
+    return model.to_schema().columns["geometry"].checks[0].statistics["geom_type"]
 
 
 def make_geometry(
@@ -159,45 +230,148 @@ def make_geometry(
     )
 
 
-DATA_TYPE_SCHEMAS: Final[dict[DataType, pa.DataFrameModel]] = {
-    "building": Building2D,
-    "roadway": Roadway2D,
-}
+DataType = Literal["building", "roadway"]
+
+Model2D = TypeVar("Model2D", bound=pa.DataFrameModel)
+Model3D = TypeVar("Model3D", bound=pa.DataFrameModel)
 
 
-def read_json(
-    json_path: Path,
-) -> tuple[DataType, gpd.GeoDataFrame] | tuple[Literal[None], Literal[None]]:
-    """Create GeoDataFrame from JSON file with Overpass query results.
+class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
+    """Abstract pydantic BaseModel for datasets, like buildings, roadways, etc."""
 
-    The path stem of input file *must* be associated with a DataType.
+    data_type: DataType
 
-    Parameters
-    ----------
-    json_path : Path
-        JSON file input path, with Overpass query results.
+    gdf_2d: GeoDataFrame[Model2D]
+    gdf_3d: GeoDataFrame[Model3D]
 
-    Returns
-    -------
-    tuple[DataType, gpd.GeoDataFrame] | tuple[Literal[None], Literal[None]]
-        Tuple with DataType and data GeoDataFrame representation of JSON file content,
-            or a tuple of (None, None) if unable to process JSON path.
+    json_path: t.PathField
 
-    """
-    try:
-        with json_path.open("r") as file:
-            obj = json.load(file)
-    except json.JSONDecodeError as e:
-        logger.error(e)
-        return (None, None)
-    else:
-        data_type = json_path.stem
-        schema = DATA_TYPE_SCHEMAS[data_type].to_schema()
-        geom_type = schema.columns["geometry"].checks[0].statistics["geom_type"]
-        return (
-            data_type,
-            schema.validate(
-                make_geometry(explode_tags(pd.DataFrame(obj["elements"])), geom_type),
+    @classmethod
+    def columns_2d(cls) -> list[str]:
+        """Columns of two-dimensional geodataframe."""
+        return list(cls.schema_2d().columns.keys())
+
+    @classmethod
+    def columns_3d(cls) -> list[str]:
+        """Columns of three-dimensional geodataframe."""
+        return list(cls.schema_3d().columns.keys())
+
+    @classmethod
+    def geom_type_2d(cls) -> str:
+        """Shapely geometry type of three-dimensional feature set."""
+        return get_geom_type(cls.model_2d())
+
+    @classmethod
+    def geom_type_3d(cls) -> str:
+        """Shapely geometry type of three-dimensional feature set."""
+        return get_geom_type(cls.model_3d())
+
+    @classmethod
+    def model_2d(cls) -> pa.DataFrameModel:
+        """Pandera DataFrameModel for two-dimensional feature set."""
+        return cls.mro()[1].__pydantic_generic_metadata__["args"][0]
+
+    @classmethod
+    def model_3d(cls) -> pa.DataFrameModel:
+        """Pandera DataFrameModel for three-dimensional feature set."""
+        return cls.mro()[1].__pydantic_generic_metadata__["args"][1]
+
+    @classmethod
+    def schema_2d(cls) -> pa.DataFrameSchema:
+        """Pandera DataFrameSchema for two-dimensional feature set."""
+        return cls.model_2d().to_schema()
+
+    @classmethod
+    def schema_2d_lazy(cls) -> pa.DataFrameSchema:
+        """Two-dimensional DataFrameSchema to use for lazy validation."""
+        schema = copy.deepcopy(cls.schema_2d())
+        schema.drop_invalid_rows = True
+        return schema
+
+    @classmethod
+    def schema_3d(cls) -> pa.DataFrameSchema:
+        """Pandera DataFrameSchema for three-dimensional feature set."""
+        return cls.model_3d().to_schema()
+
+    @classmethod
+    def schema_3d_lazy(cls) -> pa.DataFrameSchema:
+        """Three-dimensional DataFrameSchema to use for lazy validation."""
+        schema = copy.deepcopy(cls.schema_3d())
+        schema.drop_invalid_rows = True
+        return schema
+
+    @model_validator(mode="before")
+    @classmethod
+    def build_gdfs(cls, data: Any) -> Any:  # noqa: ANN401
+        """Finish populating feature set model by building geodataframes."""
+        try:
+            with data["json_path"].open("r") as file:
+                obj = json.load(file)
+        except json.JSONDecodeError as e:
+            logger.error(e)
+            data["gdf_2d"] = gpd.GeoDataFrame(columns=cls.columns_2d())
+            data["gdf_3d"] = gpd.GeoDataFrame(columns=cls.columns_2d())
+        else:
+            data["gdf_2d"] = cls.schema_2d_lazy().validate(
+                make_geometry(
+                    explode_tags(pd.DataFrame(obj["elements"])),
+                    cls.geom_type_2d(),
+                ),
                 lazy=True,
-            ),
-        )
+            )
+            data["gdf_3d"] = cls.to_3d(data["gdf_2d"])
+        return data
+
+    @classmethod
+    @abc.abstractmethod
+    def to_3d(cls, gdf: GeoDataFrame[Model2D]) -> GeoDataFrame[Model3D]:
+        """Convert two-dimensional data to three-dimensional."""
+
+
+@final
+class Building(FeatureSetBase[Building2D, Building3D]):
+    """Building feature set."""
+
+    data_type: Literal["building"] = "building"
+
+    # @pa.check_io(gdf=Building2D.to_schema(), out=Building3D.to_schema())
+    @classmethod
+    def to_3d(cls, _: GeoDataFrame[Building2D]) -> GeoDataFrame[Building3D]:
+        """Convert 2D buildings to 3D."""
+        return gpd.GeoDataFrame(columns=cls.columns_3d())
+
+
+@final
+class Roadway(FeatureSetBase[Roadway2D, Roadway3D]):
+    """Roadway feature set."""
+
+    data_type: Literal["roadway"] = "roadway"
+
+    # @pa.check_io(gdf=Roadway2D.to_schema(), out=Roadway3D.to_schema())
+    @classmethod
+    def to_3d(cls, _: GeoDataFrame[Roadway2D]) -> GeoDataFrame[Roadway3D]:
+        """Convert 2D roadways to 3D."""
+        return gpd.GeoDataFrame(columns=cls.columns_3d())
+
+
+FeaturesType = Annotated[
+    Building | Roadway,
+    Field(discriminator="data_type"),
+]
+
+
+class FeatureSet(RootModel):
+    """Pydantic root model for a feature set."""
+
+    root: FeaturesType
+
+    @classmethod
+    def from_json_path(cls, json_path: Path) -> Self:
+        """Build feature set from JSON path with Overpass results."""
+        return cls(data_type=json_path.stem, json_path=json_path)
+
+
+class Features(RootModel):
+    """Pydantic root model for the collection of all feature sets."""
+
+    root: list[FeaturesType]
