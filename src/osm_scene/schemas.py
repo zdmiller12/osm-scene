@@ -64,14 +64,6 @@ def check_geometry(
     return geometry.geom_type.eq(geom_type)
 
 
-class JsonModel(pa.DataFrameModel):
-    """Dataframe model for Overpass results as JSON."""
-
-    id: int
-    geometry: pa.Object
-    tags: pa.Object
-
-
 class Building2D(pa.DataFrameModel):
     """Dataframe model for two-dimensional buildings."""
 
@@ -246,41 +238,49 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
 
     json_path: t.PathField
 
+    @final
     @classmethod
     def columns_2d(cls) -> list[str]:
         """Columns of two-dimensional geodataframe."""
         return list(cls.schema_2d().columns.keys())
 
+    @final
     @classmethod
     def columns_3d(cls) -> list[str]:
         """Columns of three-dimensional geodataframe."""
         return list(cls.schema_3d().columns.keys())
 
+    @final
     @classmethod
     def geom_type_2d(cls) -> str:
         """Shapely geometry type of three-dimensional feature set."""
         return get_geom_type(cls.model_2d())
 
+    @final
     @classmethod
     def geom_type_3d(cls) -> str:
         """Shapely geometry type of three-dimensional feature set."""
         return get_geom_type(cls.model_3d())
 
+    @final
     @classmethod
     def model_2d(cls) -> pa.DataFrameModel:
         """Pandera DataFrameModel for two-dimensional feature set."""
         return cls.mro()[1].__pydantic_generic_metadata__["args"][0]
 
+    @final
     @classmethod
     def model_3d(cls) -> pa.DataFrameModel:
         """Pandera DataFrameModel for three-dimensional feature set."""
         return cls.mro()[1].__pydantic_generic_metadata__["args"][1]
 
+    @final
     @classmethod
     def schema_2d(cls) -> pa.DataFrameSchema:
         """Pandera DataFrameSchema for two-dimensional feature set."""
         return cls.model_2d().to_schema()
 
+    @final
     @classmethod
     def schema_2d_lazy(cls) -> pa.DataFrameSchema:
         """Two-dimensional DataFrameSchema to use for lazy validation."""
@@ -288,11 +288,13 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
         schema.drop_invalid_rows = True
         return schema
 
+    @final
     @classmethod
     def schema_3d(cls) -> pa.DataFrameSchema:
         """Pandera DataFrameSchema for three-dimensional feature set."""
         return cls.model_3d().to_schema()
 
+    @final
     @classmethod
     def schema_3d_lazy(cls) -> pa.DataFrameSchema:
         """Three-dimensional DataFrameSchema to use for lazy validation."""
@@ -300,6 +302,7 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
         schema.drop_invalid_rows = True
         return schema
 
+    @final
     @model_validator(mode="before")
     @classmethod
     def build_gdfs(cls, data: Any) -> Any:  # noqa: ANN401
