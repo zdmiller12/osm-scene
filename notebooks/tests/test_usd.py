@@ -16,6 +16,7 @@ EXPECTED_USD_PATHS = {
     "mesh.usda",
     "pixar-sphere.usda",
     "plane.usda",
+    "sandbox.usda",
     "sphere.usda",
 }
 
