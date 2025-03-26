@@ -30,3 +30,4 @@ def cleanup_usd(expected_usd):  # pragma: no cover
 def test_usd_notebook(_, expected_usd):  # noqa: PT019
     for usd in expected_usd:
         assert usd.is_file()
+        usd.unlink()

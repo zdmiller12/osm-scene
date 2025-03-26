@@ -24,3 +24,4 @@ def cleanup_stl(expected_stl):  # pragma: no cover
 def test_stl_notebook(_, expected_stl):  # noqa: PT019
     for stl in expected_stl:
         assert stl.is_file()
+        stl.unlink()
