@@ -89,6 +89,9 @@ select = ["ALL"]
 
 
 [tool.ruff.lint.extend-per-file-ignores]
+"notebooks/*.ipynb" = [
+  "S301",
+]
 "src/osm_scene/_types.py" = [
   "ANN401",
   "PLR2004",
