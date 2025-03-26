@@ -16,11 +16,11 @@ def expected_stl(dir_notebooks):
 @pytest.fixture
 def cleanup_stl(expected_stl):  # pragma: no cover
     for stl in expected_stl:
-        stl.unlink()
+        stl.unlink(missing_ok=True)
 
 
 @pytest.mark.usefixtures("cleanup_stl")
 @testbook("stl.ipynb", execute=True)
-def test_usd_notebook(_, expected_stl):  # noqa: PT019
+def test_stl_notebook(_, expected_stl):  # noqa: PT019
     for stl in expected_stl:
-        assert stl.exists()
+        assert stl.is_file()

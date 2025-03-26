@@ -3,30 +3,30 @@
 import pytest
 from testbook import testbook
 
-
-@pytest.fixture
-def cleanup_usd_files(dir_notebooks):  # pragma: no cover
-    for usd_path in dir_notebooks.glob("*.usd*"):
-        usd_path.unlink()
-
-
-EXPECTED_USD_PATHS = {
-    "cone.usda",
-    "extruded-plane.usda",
-    "mesh.usda",
-    "pixar-sphere.usda",
-    "plane.usda",
-    "sandbox.usda",
-    "sphere.usda",
+EXPECTED_USD_FILES = {
+    "usd/cone.usda",
+    "usd/extruded-plane.usda",
+    "usd/mesh.usda",
+    "usd/pixar-sphere.usda",
+    "usd/plane.usda",
+    "usd/sandbox.usda",
+    "usd/sphere.usda",
 }
 
 
-@pytest.mark.usefixtures("cleanup_usd_files")
-@testbook("usd.ipynb", execute=True)
-def test_usd_notebook(_, dir_notebooks):  # noqa: PT019
-    usd_paths = set()
-    for usd_path in dir_notebooks.glob("*.usd*"):
-        usd_paths.add(usd_path.name)
-        usd_path.unlink()
+@pytest.fixture
+def expected_usd(dir_notebooks):
+    return {dir_notebooks / usd for usd in EXPECTED_USD_FILES}
 
-    assert usd_paths == EXPECTED_USD_PATHS
+
+@pytest.fixture
+def cleanup_usd(expected_usd):  # pragma: no cover
+    for usd in expected_usd:
+        usd.unlink(missing_ok=True)
+
+
+@pytest.mark.usefixtures("cleanup_usd")
+@testbook("usd.ipynb", execute=True)
+def test_usd_notebook(_, expected_usd):  # noqa: PT019
+    for usd in expected_usd:
+        assert usd.is_file()
