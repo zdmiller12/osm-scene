@@ -2,6 +2,18 @@
 
 Transforming [OpenStreetMap](https://www.openstreetmap.org/) data.
 
+## Configuration
+
+This repository uses [pre-commit](https://pre-commit.com/).
+
+Other configuration is primarily defined in [pyproject.toml](./pyproject.toml).
+
+| Tool | Link |
+| ---- | ---- |
+| coverage | https://coverage.readthedocs.io/en/latest/config.html |
+| pytest | https://docs.pytest.org/en/stable/reference/customize.html |
+| ruff | https://docs.astral.sh/ruff/configuration/ |
+
 ## Scripts
 
 ### Run JOSM in Docker Container
@@ -15,7 +27,7 @@ Transforming [OpenStreetMap](https://www.openstreetmap.org/) data.
 ## Installation
 
 > requires python3.12
-> 
+>
 > poetry 2.1.1 was used for development
 
 ```sh

@@ -2581,7 +2581,7 @@ version = "25.2.post1"
 description = "Pixar's Universal Scene Description"
 optional = false
 python-versions = "<3.13,>=3.6"
-groups = ["main"]
+groups = ["notebook"]
 files = [
     {file = "usd_core-25.2.post1-cp310-none-macosx_10_9_universal2.whl", hash = "sha256:6bbe60c6a864d32ed0fc1d24e51b252053dc00457555fec7a5f3bc9ef05e9698"},
     {file = "usd_core-25.2.post1-cp310-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:96cd87a7450566b90af1210a61871aec70ef4f3c80e82ca5152a47ced44c13a2"},
@@ -2678,4 +2678,4 @@ viz = ["cartopy", "matplotlib", "nc-time-axis", "seaborn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "06293cbcc85f26ea8c9bf3fba244ac9a1b6f63b690f41225e69cd450db00c1c9"
+content-hash = "409d2e61ce9eea415b06623fef7c25f8c56c98f6537a09852e3f2ebf74f3f3ca"
