@@ -44,6 +44,7 @@ optional = true
 
 [tool.poetry.group.notebook.dependencies]
 ipykernel = "^6.29.5"
+ipympl = "^0.9.7"
 testbook = "^0.4.2"
 usd-core = "^25.2.post1"
 
