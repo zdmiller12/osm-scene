@@ -15,6 +15,7 @@ todo
 import abc
 import copy
 import json
+import random
 from pathlib import Path
 from typing import Annotated, Any, Generic, Literal, Self, TypeVar, final
 
@@ -28,7 +29,7 @@ from pandera.typing.geopandas import GeoDataFrame, Geometry, GeoSeries
 from pydantic import BaseModel, Field, RootModel, model_validator
 from pyproj import CRS
 
-import osm_scene._types as t
+import osm_scene._types as tp
 
 
 @pa.extensions.register_check_method(statistics=["geom_type", "crs"])
@@ -64,8 +65,8 @@ def check_geometry(
     return geometry.geom_type.eq(geom_type)
 
 
-class Building2D(pa.DataFrameModel):
-    """Dataframe model for two-dimensional buildings."""
+class Building2DRaw(pa.DataFrameModel):
+    """Dataframe model for raw Overpass content to create two-dimensional buildings."""
 
     id: int = pa.Field(default=0, gt=0)
     geometry: Geometry = pa.Field(
@@ -85,25 +86,27 @@ class Building2D(pa.DataFrameModel):
         strict = "filter"
 
 
+class Building2D(Building2DRaw):
+    """Dataframe model for two-dimensional buildings."""
+
+    height: float = pa.Field(gt=0)
+
+
 class Building3D(pa.DataFrameModel):
     """Dataframe model for three-dimensional buildings."""
 
-    id: int = pa.Field(default=0, gt=0)
-    geometry: Geometry = pa.Field(
-        check_geometry={"geom_type": "Polygon", "crs": 4326},
-        default=shapely.Polygon(),
-    )
+    id: int = pa.Field(gt=0)
+    geometry: Geometry = pa.Field(check_geometry={"geom_type": "Polygon", "crs": 4326})
 
     class Config:
         """Pandera BaseConfig."""
 
-        add_missing_columns = True
         coerce = True
         strict = "filter"
 
 
-class Roadway2D(pa.DataFrameModel):
-    """Dataframe model for two-dimensional roadways."""
+class Roadway2DRaw(pa.DataFrameModel):
+    """Dataframe model for raw Overpass content to create two-dimensional roadways."""
 
     id: int = pa.Field(default=0, gt=0)
     geometry: Geometry = pa.Field(
@@ -115,7 +118,11 @@ class Roadway2D(pa.DataFrameModel):
 
     highway: str = pa.Field(default="", str_length={"min_value": 1})
     lanes: int = pa.Field(default=2, gt=0)
+    lanes_backward: int = pa.Field(default=0, alias="lanes:backward")
+    lanes_both: int = pa.Field(default=0, alias="lanes:both")
+    # placement: str = pa.Field(nullable=True)  # TODO
     width: float = pa.Field(nullable=True)
+    width_lanes: str = pa.Field(nullable=True, alias="width:lanes")
 
     class Config:
         """Pandera BaseConfig."""
@@ -125,19 +132,30 @@ class Roadway2D(pa.DataFrameModel):
         strict = "filter"
 
 
+class Roadway2D(Roadway2DRaw):
+    """Dataframe model for two-dimensional roadways."""
+
+    sub_id: int = pa.Field(ge=0)
+    # geometry: Geometry = pa.Field(
+    #     check_geometry={"geom_type": "Polygon", "crs": 4326},
+    #     default=shapely.Polygon(),
+    # )
+
+
 class Roadway3D(pa.DataFrameModel):
     """Dataframe model for three-dimensional roadways."""
 
-    id: int = pa.Field(default=0, gt=0)
+    id: int = pa.Field(gt=0)
     geometry: Geometry = pa.Field(
         check_geometry={"geom_type": "LineString", "crs": 4326},
         default=shapely.LineString(),
     )
 
+    # direction TODO
+
     class Config:
         """Pandera BaseConfig."""
 
-        add_missing_columns = True
         coerce = True
         strict = "filter"
 
@@ -224,11 +242,12 @@ def make_geometry(
 
 DataType = Literal["building", "roadway"]
 
+Model2DRaw = TypeVar("Model2DRaw", bound=pa.DataFrameModel)
 Model2D = TypeVar("Model2D", bound=pa.DataFrameModel)
 Model3D = TypeVar("Model3D", bound=pa.DataFrameModel)
 
 
-class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
+class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2DRaw, Model2D, Model3D]):
     """Abstract pydantic BaseModel for datasets, like buildings, roadways, etc."""
 
     data_type: DataType
@@ -236,7 +255,13 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
     gdf_2d: GeoDataFrame[Model2D]
     gdf_3d: GeoDataFrame[Model3D]
 
-    json_path: t.PathField
+    json_path: tp.PathField
+
+    @final
+    @classmethod
+    def columns_2d_raw(cls) -> list[str]:
+        """Columns of two-dimensional geodataframe."""
+        return list(cls.schema_2d_raw().columns.keys())
 
     @final
     @classmethod
@@ -252,6 +277,12 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
 
     @final
     @classmethod
+    def geom_type_2d_raw(cls) -> str:
+        """Shapely geometry type of three-dimensional feature set."""
+        return get_geom_type(cls.model_2d_raw())
+
+    @final
+    @classmethod
     def geom_type_2d(cls) -> str:
         """Shapely geometry type of three-dimensional feature set."""
         return get_geom_type(cls.model_2d())
@@ -264,21 +295,41 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
 
     @final
     @classmethod
-    def model_2d(cls) -> pa.DataFrameModel:
+    def model_2d_raw(cls) -> pa.DataFrameModel:
         """Pandera DataFrameModel for two-dimensional feature set."""
         return cls.mro()[1].__pydantic_generic_metadata__["args"][0]
 
     @final
     @classmethod
+    def model_2d(cls) -> pa.DataFrameModel:
+        """Pandera DataFrameModel for two-dimensional feature set."""
+        return cls.mro()[1].__pydantic_generic_metadata__["args"][1]
+
+    @final
+    @classmethod
     def model_3d(cls) -> pa.DataFrameModel:
         """Pandera DataFrameModel for three-dimensional feature set."""
-        return cls.mro()[1].__pydantic_generic_metadata__["args"][1]
+        return cls.mro()[1].__pydantic_generic_metadata__["args"][2]
+
+    @final
+    @classmethod
+    def schema_2d_raw(cls) -> pa.DataFrameSchema:
+        """Pandera DataFrameSchema for two-dimensional feature set."""
+        return cls.model_2d_raw().to_schema()
 
     @final
     @classmethod
     def schema_2d(cls) -> pa.DataFrameSchema:
         """Pandera DataFrameSchema for two-dimensional feature set."""
         return cls.model_2d().to_schema()
+
+    @final
+    @classmethod
+    def schema_2d_raw_lazy(cls) -> pa.DataFrameSchema:
+        """Two-dimensional DataFrameSchema to use for lazy validation."""
+        schema = copy.deepcopy(cls.schema_2d_raw())
+        schema.drop_invalid_rows = True
+        return schema
 
     @final
     @classmethod
@@ -315,15 +366,23 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
             data["gdf_2d"] = gpd.GeoDataFrame(columns=cls.columns_2d())
             data["gdf_3d"] = gpd.GeoDataFrame(columns=cls.columns_3d())
         else:
-            data["gdf_2d"] = cls.schema_2d_lazy().validate(
-                make_geometry(
-                    explode_tags(pd.DataFrame(obj["elements"])),
-                    cls.geom_type_2d(),
+            data["gdf_2d"] = cls.to_2d(
+                cls.schema_2d_raw_lazy().validate(
+                    make_geometry(
+                        explode_tags(pd.DataFrame(obj["elements"])),
+                        cls.geom_type_2d_raw(),
+                    ),
+                    lazy=True,
                 ),
-                lazy=True,
             )
             data["gdf_3d"] = cls.to_3d(data["gdf_2d"])
         return data
+
+    @classmethod
+    @abc.abstractmethod
+    @pa.check_types
+    def to_2d(cls, gdf: GeoDataFrame[Model2DRaw]) -> GeoDataFrame[Model2D]:
+        """Convert raw data from Overpass response to two-dimensional data."""
 
     @classmethod
     @abc.abstractmethod
@@ -333,10 +392,31 @@ class FeatureSetBase(BaseModel, abc.ABC, Generic[Model2D, Model3D]):
 
 
 @final
-class Building(FeatureSetBase[Building2D, Building3D]):
+class Building(FeatureSetBase[Building2DRaw, Building2D, Building3D]):
     """Building feature set."""
 
     data_type: Literal["building"] = "building"
+
+    @classmethod
+    def to_2d(cls, gdf: GeoDataFrame[Building2DRaw]) -> GeoDataFrame[Building2D]:
+        """Convert Overpass response to 2D buildings.
+
+        TODO:
+            Better strategy for filling in height values. Like a utils "HeightFiller"
+                class, which can be configured by Build.
+                input = height series with NaNs
+                return = height series without NaNs
+
+        """
+        if (nan_height_i := gdf["height"].isna()).any():
+            height_max = _max if ~np.isnan(_max := gdf["height"].max()) else 100
+            height_min = _min if ~np.isnan(_min := gdf["height"].min()) else 10
+
+            gdf["height"] = gdf["height"].mask(
+                nan_height_i,
+                lambda _: round(random.uniform(height_min, height_max), 1),
+            )
+        return gdf
 
     @classmethod
     def to_3d(cls, gdf: GeoDataFrame[Building2D]) -> GeoDataFrame[Building3D]:
@@ -345,10 +425,16 @@ class Building(FeatureSetBase[Building2D, Building3D]):
 
 
 @final
-class Roadway(FeatureSetBase[Roadway2D, Roadway3D]):
+class Roadway(FeatureSetBase[Roadway2DRaw, Roadway2D, Roadway3D]):
     """Roadway feature set."""
 
     data_type: Literal["roadway"] = "roadway"
+
+    @classmethod
+    def to_2d(cls, gdf: GeoDataFrame[Roadway2DRaw]) -> GeoDataFrame[Roadway2D]:
+        """Convert Overpass response to 2D roadways."""
+        gdf.loc[:, "sub_id"] = 0
+        return gdf
 
     @classmethod
     def to_3d(cls, gdf: GeoDataFrame[Roadway2D]) -> GeoDataFrame[Roadway3D]:

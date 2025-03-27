@@ -85,6 +85,9 @@ docstring-code-format = true
 
 
 [tool.ruff.lint]
+ignore = [
+  "S311",
+]
 select = ["ALL"]
 
 

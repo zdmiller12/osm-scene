@@ -120,22 +120,36 @@ def test_feature_set(tmp_path):
     path_roadway.touch()
 
     buildings = schemas.FeatureSet.from_json_path(path_building).root
+    assert "id" in buildings.columns_2d_raw()
+    assert "id" in buildings.columns_2d()
+    assert "id" in buildings.columns_3d()
+    assert buildings.geom_type_2d_raw() == "Polygon"
     assert buildings.geom_type_2d() == "Polygon"
     assert buildings.geom_type_3d() == "Polygon"
+    assert buildings.model_2d_raw() == schemas.Building2DRaw
     assert buildings.model_2d() == schemas.Building2D
     assert buildings.model_3d() == schemas.Building3D
+    assert buildings.schema_2d_raw() == schemas.Building2DRaw.to_schema()
     assert buildings.schema_2d() == schemas.Building2D.to_schema()
     assert buildings.schema_3d() == schemas.Building3D.to_schema()
+    assert buildings.schema_2d_raw_lazy().drop_invalid_rows
     assert buildings.schema_2d_lazy().drop_invalid_rows
     assert buildings.schema_3d_lazy().drop_invalid_rows
 
     roadways = schemas.FeatureSet.from_json_path(path_roadway).root
+    assert "id" in roadways.columns_2d_raw()
+    assert "id" in roadways.columns_2d()
+    assert "id" in roadways.columns_3d()
+    assert roadways.geom_type_2d_raw() == "LineString"
     assert roadways.geom_type_2d() == "LineString"
     assert roadways.geom_type_3d() == "LineString"
+    assert roadways.model_2d_raw() == schemas.Roadway2DRaw
     assert roadways.model_2d() == schemas.Roadway2D
     assert roadways.model_3d() == schemas.Roadway3D
+    assert roadways.schema_2d_raw() == schemas.Roadway2DRaw.to_schema()
     assert roadways.schema_2d() == schemas.Roadway2D.to_schema()
     assert roadways.schema_3d() == schemas.Roadway3D.to_schema()
+    assert roadways.schema_2d_raw_lazy().drop_invalid_rows
     assert roadways.schema_2d_lazy().drop_invalid_rows
     assert roadways.schema_3d_lazy().drop_invalid_rows
 
